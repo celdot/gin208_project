@@ -1,0 +1,80 @@
+---                                         
+- name: ffmpeg configuration           
+  gather_facts: yes                        
+  hosts: webservers                      
+  
+  tasks:  
+  - name: Create directory for FFmpeg configuration
+    file:
+      path: /etc/ffmpeg
+      state: directory
+      owner: ubuntu
+      group: ubuntu
+    become: true
+
+  - name: Create videos directory
+    file:
+      path: /videos
+      state: directory
+      owner: ubuntu
+      group: ubuntu
+      mode: '0755'
+    become: true
+
+  - name: Check if sample video exists
+    stat:
+      path: /videos/BigBuckBunny_320x180.mp4
+    register: video_file
+
+  - name: Upload BigBuckBunny video
+    copy:
+      src: files/BigBuckBunny_320x180.mp4
+      dest: /videos/BigBuckBunny_320x180.mp4
+    when: not video_file.stat.exists
+
+  - name: Upload FFmpeg streaming script
+    copy:
+      dest: /etc/ffmpeg/stream.sh
+      content: |
+        #!/bin/bash 
+        ffmpeg -re -i /videos/BigBuckBunny_320x180.mp4 -loop -1 -c:v copy -c:a copy -f flv rtmp://192.168.3.75:1943/live/stream
+    become: true
+
+  - name: Set execute permission on FFmpeg streaming script
+    file:
+      path: /etc/ffmpeg/stream.sh
+      mode: '0755'
+    become: true
+
+  - name: Create systemd service for FFmpeg streaming
+    copy:
+      dest: /etc/systemd/system/ffmpeg-stream.service
+      content: |
+        [Unit]
+        Description=FFmpeg Stream Service
+        After=network.target
+
+        [Service]
+        ExecStart=/etc/ffmpeg/stream.sh
+        Restart=always
+
+        [Install]
+        WantedBy=multi-user.target
+    become: true
+
+  - name: Set permission on systemd service file
+    file:
+      path: /etc/systemd/system/ffmpeg-stream.service
+      mode: '0644'
+    become: true
+
+  - name: Reload systemd daemon
+    command: systemctl daemon-reload
+    become: true
+
+  - name: Enable and start FFmpeg stream service
+    systemd:
+      name: ffmpeg-stream
+      enabled: yes
+      state: started
+    become: true

@@ -1,0 +1,21 @@
+---                                    
+- name: ffmpeg installation       
+  gather_facts: yes                    
+  hosts: webservers                  
+  
+  tasks:                               
+  - name: Install ffmpeg package        
+    ansible.builtin.apt:            
+      update_cache: yes                     
+      pkg:                                  
+        - ffmpeg                             
+      state: present                        
+    become: true            
+
+  - name: Verify FFmpeg installation
+    command: ffmpeg -version
+    register: ffmpeg_version
+    
+  - name: Display FFmpeg version
+    debug:
+      msg: "FFmpeg version is {{ ffmpeg_version.stdout }}"

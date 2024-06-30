@@ -1,0 +1,24 @@
+server {
+  listen 80 {{ 'default_server' if main_server else '' }};
+  listen [::]:80 {{ 'default_server' if main_server else '' }};
+  server_name {{ domain }};
+
+  root /var/www/{{ domain }};
+  index index.html;
+
+  location / {
+      try_files $uri $uri/ =404;
+  }
+
+  location /live {
+      types {
+          application/vnd.apple.mpegurl m3u8;
+          video/mp2t ts;
+      }
+      alias /tmp/hls;
+      add_header Cache-Control no-cache;
+      add_header Access-Control-Allow-Origin *;
+      
+      
+  }
+}
